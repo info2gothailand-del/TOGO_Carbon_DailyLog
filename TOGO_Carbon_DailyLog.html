@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang='th'>
+  <head>
+    <meta charset='utf-8' />
+    <title>คำนวณคาร์บอนเครดิต – บันทึกประจำวัน (TOGO) [v4 - Full Features]</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1' />
+    <script src='https://unpkg.com/react@18/umd/react.development.js'></script>
+    <script src='https://unpkg.com/react-dom@18/umd/react-dom.development.js'></script>
+    <script src='https://unpkg.com/@babel/standalone/babel.min.js'></script>
+    <style>
+      :root{--bg:#f5f6f7;--card:#ffffff;--muted:#6b7280;--text:#0f172a;--border:#e5e7eb;--accent:#111827;--accent-2:#0ea5e9;--good:#047857;--sync:#1d4ed8;}
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+      .container{max-width:1080px;margin:24px auto;padding:0 16px}
+      h1{font-size:22px;margin:0 0 4px 0;display:flex;align-items:center;gap:8px}
+      .sub{color:var(--muted);font-size:12.5px;margin-bottom:14px}
+      .row{display:grid;gap:14px}
+      @media(min-width:900px){.row-3{grid-template-columns:repeat(3,1fr)}}
+      .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px}
+      .card h3{margin:0 0 10px 0;font-size:15px;display:flex;align-items:center;gap:8px}
+      label{font-size:12.5px;color:var(--muted);display:block}
+      input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--text);font-size:14px}
+      input::placeholder{color:#9ca3af}
+      input[type="password"]{font-family:monospace;}
+      textarea{min-height:84px;resize:vertical}
+      table{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden}
+      th,td{padding:10px;border-bottom:1px solid var(--border);font-size:14px}
+      th{background:#f3f4f6;text-align:left}
+      .right{text-align:right}
+      .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:12px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;font-size:14px}
+      .btn.sec{background:#fff;color:var(--text);border-color:var(--border)}
+      .btn.sync{background:var(--sync);border-color:var(--sync);}
+      .btn:disabled{opacity:0.5;cursor:not-allowed;}
+      .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+      .kpis{display:grid;gap:10px}
+      @media(min-width:700px){.kpis{grid-template-columns:repeat(4,1fr)}}
+      .kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px}
+      .kpi .name{font-size:12px;color:var(--muted)}
+      .kpi .val{font-size:20px;font-weight:700}
+      .pill{display:inline-flex;gap:6px;align-items:center;padding:10px;border:1px solid var(--border);background:#fff;border-radius:12px}
+      .result-grid{display:grid;gap:14px}
+      @media(min-width:900px){.result-grid{grid-template-columns:1fr 2fr}}
+      .big{font-size:26px;font-weight:800}
+      .green{color:var(--good)}
+      footer{color:var(--muted);font-size:12px;margin-top:16px}
+      .icon{width:18px;height:18px;display:inline-block}
+      .head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+    </style>
+  </head>
+  <body>
+    <div id='root'></div>
+
+    <script type='text/babel'>
+      const {useState, useMemo, useEffect} = React;
+
+      // --- Custom Hook for Local Storage ---
+      function useLocalStorage(key, initialValue) {
+        const [storedValue, setStoredValue] = useState(() => {
+          try {
+            const item = window.localStorage.getItem(key);
+            return item ? JSON.parse(item) : initialValue;
+          } catch (error) {
+            console.warn('Error reading localStorage key “' + key + '”: ', error);
+            return initialValue;
+          }
+        });
+        useEffect(() => {
+          try {
+            window.localStorage.setItem(key, JSON.stringify(storedValue));
+          } catch (error) {
+            console.error('Error writing to localStorage key “' + key + '”: ', error);
+          }
+        }, [key, storedValue]);
+        return [storedValue, setStoredValue];
+      }
+
+      // --- Simple Thai number formatter ---
+      const num = (v, d=2)=> new Intl.NumberFormat('th-TH',{maximumFractionDigits:d}).format(v||0);
+
+      // --- SVG Icons ---
+      const Leaf = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><path d='M5 21c8 0 14-6 14-14V3a2 2 0 0 0-2-2h-4C5 1 1 5 1 11a10 10 0 0 0 10 10h0'/></svg>);
+      const Download = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><path d='M7 10l5 5 5-5'/><path d='M12 15V3'/></svg>);
+      const Bolt = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><path d='M13 2L3 14h7l-1 8 10-12h-7l1-8z'/></svg>);
+      const Trash = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><polyline points='3 6 5 6 21 6'/><path d='M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6'/><path d='M10 11v6'/><path d='M14 11v6'/><path d='M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2'/></svg>);
+      const Calculator = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><rect x='4' y='2' width='16' height='20' rx='2'/><rect x='8' y='6' width='8' height='4'/><path d='M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01'/></svg>);
+      const UploadCloud = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><path d='M7 10l5-5 5 5'/><path d='M12 15V3'/></svg>);
+      const SheetIcon = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/></svg>);
+
+      function App(){
+        // --- Assumptions stored in Local Storage ---
+        const [efLandfill, setEfLandfill] = useLocalStorage('togo_efLandfill', 2.53);
+        const [efComposting, setEfComposting] = useLocalStorage('togo_efComposting', 0.3326);
+        const [gridEF, setGridEF] = useLocalStorage('togo_gridEF', 0.5986);
+        const [kwhDefault, setKwhDefault] = useLocalStorage('togo_kwhDefault', 130);
+        const [diversionRate, setDiversionRate] = useLocalStorage('togo_diversionRate', 1);
+        const [notes, setNotes] = useLocalStorage('togo_notes', 'ข้อแนะนำ: ใช้ EF Landfill 2.53, EF Composting 0.3326, EF ไฟฟ้า 0.5986 ตาม TGO');
+        
+        // --- State for Google Sheet URL ---
+        const [sheetUrl, setSheetUrl] = useLocalStorage('togo_sheetUrl', '');
+        const [isSyncing, setIsSyncing] = useState(false);
+
+        const efNetAvoidance = useMemo(() => Math.max(0, efLandfill - efComposting), [efLandfill, efComposting]); 
+
+        // --- Daily logs stored in Local Storage (with new fields) ---
+        const [rows, setRows] = useLocalStorage('togo_dailyRows', [
+          { id: crypto.randomUUID(), date: '2025-10-29', wasteInKg: 1000, soilOutKg: 200, kwh: 150, supplementaryKg: 50, rowNotes: 'ทดสอบ' },
+          { id: crypto.randomUUID(), date: '2025-10-30', wasteInKg: 1500, soilOutKg: 300, kwh: '', supplementaryKg: 75, rowNotes: '' },
+        ]);
+
+        const addRow = () => setRows(r => [...r, { 
+          id: crypto.randomUUID(), 
+          date: new Date().toISOString().slice(0,10), 
+          wasteInKg: 0, 
+          soilOutKg: 0, 
+          kwh: '',
+          supplementaryKg: 0, // NEW
+          rowNotes: ''       // NEW
+        }]);
+        const updateRow = (id, patch) => setRows(r => r.map(x => x.id===id ? {...x, ...patch} : x));
+        const removeRow = (id) => setRows(r => r.filter(x => x.id !== id));
+        
+        const clearAllData = () => {
+            if(window.confirm('คุณแน่ใจหรือไม่ที่จะล้างข้อมูลทั้งหมด? ข้อมูลทั้งหมดจะหายไปและกลับสู่ค่าเริ่มต้น! (ไม่รวม URL)')) {
+                setEfLandfill(2.53);
+                setEfComposting(0.3326);
+                setGridEF(0.5986);
+                setKwhDefault(130);
+                setDiversionRate(1);
+                setNotes('ข้อแนะนำ: ...');
+                setRows([]);
+            }
+        };
+
+        // --- Updated Calculation Logic ---
+        const sum = useMemo(()=>{
+          const totalWasteIn = rows.reduce((s,r)=> s + Math.max(0, +r.wasteInKg||0), 0);
+          const totalSoilOut = rows.reduce((s,r)=> s + Math.max(0, +r.soilOutKg||0), 0);
+          const totalSupplementaryIn = rows.reduce((s,r)=> s + Math.max(0, +r.supplementaryKg||0), 0); // NEW
+          
+          const wasteToCalculate = totalWasteIn * Math.min(1, Math.max(0, diversionRate));
+          
+          const totalKwh = rows.reduce((s,r)=> s + Math.max(0, r.kwh===''? kwhDefault : +r.kwh||0), 0);
+
+          const gross_kg = wasteToCalculate * efNetAvoidance; 
+          const elec_kg = totalKwh * Math.max(0, gridEF);
+          const net_kg = Math.max(0, gross_kg - elec_kg);
+          
+          const gross_t = gross_kg/1000, elec_t = elec_kg/1000, net_t = net_kg/1000;
+          const trees = net_t * 24.5676;
+
+          // --- NEW KPIs ---
+          const days = rows.length;
+          const avgKwh = (days > 0) ? totalKwh / days : 0;
+          const totalMassIn = totalWasteIn + totalSupplementaryIn;
+          const soilOutPercent = (totalMassIn > 0) ? (totalSoilOut / totalMassIn) * 100 : 0;
+          
+          return { 
+            totalWasteIn, totalSoilOut, wasteToCalculate, totalKwh, gross_t, elec_t, net_t, trees, 
+            days, totalSupplementaryIn, avgKwh, soilOutPercent
+          };
+        }, [rows, efNetAvoidance, gridEF, kwhDefault, diversionRate]);
+
+        // --- Function to Sync Data to Google Sheet (Updated) ---
+        const syncToGoogleSheet = () => {
+          if (!sheetUrl) {
+            alert('กรุณาใส่ Web App URL ของ Google Apps Script ในช่องตั้งค่าก่อนครับ');
+            return;
+          }
+          if (rows.length === 0) {
+            alert('ไม่มีข้อมูลในตารางที่จะส่งครับ');
+            return;
+          }
+          
+          if (!window.confirm(`ยืนยันการส่งข้อมูล ${rows.length} แถว ไปยัง Google Sheet?\n(ข้อมูลในตารางนี้จะไม่ถูกลบ)`)) {
+            return;
+          }
+
+          setIsSyncing(true);
+          
+          // 1. เตรียมข้อมูล (รวมฟิลด์ใหม่)
+          const dataToSync = rows.map(r => ({
+            date: r.date,
+            wasteInKg: r.wasteInKg,
+            supplementaryKg: +r.supplementaryKg || 0, // NEW
+            soilOutKg: r.soilOutKg,
+            kwh: r.kwh === '' ? kwhDefault : (+r.kwh || 0),
+            rowNotes: r.rowNotes || '' // NEW
+          }));
+
+          // 2. ส่งข้อมูลด้วย fetch
+          fetch(sheetUrl, {
+            method: 'POST',
+            cache: 'no-cache',
+            redirect: 'follow',
+            body: JSON.stringify(dataToSync),
+            headers: {
+              'Content-Type': 'text/plain;charset=utf-8',
+            },
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === 'success') {
+              alert(`ส่งข้อมูลสำเร็จ! ${data.rowsAdded} แถว ถูกเพิ่มไปยัง Google Sheet`);
+              // setRows([]); // (ทางเลือก) ลบข้อมูลที่ Sync แล้ว
+            } else {
+              throw new Error(data.message);
+            }
+          })
+          .catch(error => {
+             console.error('Error syncing to Google Sheet:', error);
+             alert('เกิดข้อผิดพลาดในการ Sync: \n' + error.message);
+          })
+          .finally(() => {
+             setIsSyncing(false);
+          });
+        };
+
+        // --- Function for CSV Download (Updated) ---
+        const downloadCSV = () => {
+          // NEW: Updated Headers
+          const head = [['วันที่','ขยะเข้า (กก.)','วัตถุดิบเสริม (กก.)','สารปรับปรุงดินออกทั้งหมด (กก.)','ไฟฟ้า (kWh)', 'หมายเหตุ']];
+          // NEW: Updated Body
+          const body = rows.map(r => [
+            r.date, 
+            r.wasteInKg, 
+            r.supplementaryKg, 
+            r.soilOutKg, 
+            r.kwh===''? kwhDefault : r.kwh,
+            r.rowNotes
+          ]);
+          
+          const sumRows = [
+            [],['สรุป','','','','',''],
+            ['จำนวนวัน', sum.days,'','','',''],
+            ['รวมขยะเข้า (กก.)', sum.totalWasteIn,'','','',''],
+            ['รวมวัตถุดิบเสริม (กก.)', sum.totalSupplementaryIn,'','','',''], // NEW
+            ['รวมสารปรับปรุงดินออก (กก.)', sum.totalSoilOut,'','','',''], // Renamed
+            ['ขยะที่ใช้คำนวณ (กก.)', sum.wasteToCalculate,'','','',''],
+            ['รวมไฟฟ้า (kWh)', sum.totalKwh,'','','',''],
+            ['% สารปรับปรุงดินออก', sum.soilOutPercent.toFixed(2) + '%','','','',''], // NEW
+            ['พลังงานเฉลี่ย (kWh/วัน)', sum.avgKwh.toFixed(2),'','','',''], // NEW
+            [],
+            ['EF Landfill (kgCO2e/กก.)', efLandfill,"","","",""],
+            ['EF Composting (kgCO2e/กก.)', efComposting,"","","",""],
+            ['EF สุทธิขยะ (kgCO2e/กก.)', efNetAvoidance.toFixed(4),"","","",""],
+            ['EF ไฟฟ้า (kgCO2e/kWh)', gridEF,"","","",""],
+            ['Gross (ตันCO2e)', sum.gross_t.toFixed(3),"","","",""],
+            ['ไฟฟ้า (ตันCO2e)', sum.elec_t.toFixed(3),"","","",""],
+            ['Net (ตันCO2e)', sum.net_t.toFixed(3),"","","",""],
+            ['เทียบเท่าต้นไม้ (ต้น)', Math.round(sum.trees),"","","",""],
+            ['หมายเหตุทั่วไป', notes.replaceAll('\n',' '), '', '', '', ''],
+          ];
+          const all = [...head, ...body, ...sumRows];
+          const csv = all.map(r => r.map(x => `"${String(x).replaceAll('"','""')}"`).join(',')).join('\r\n');
+          const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `TOGO_DailyLog_${new Date().toISOString().slice(0,10)}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+
+        return (
+          <div className='container'>
+            <div className='head'>
+              <div>
+                <h1><Calculator/> คำนวณคาร์บอนเครดิต – บันทึกประจำวัน (TOGO)</h1>
+                <div className='sub'>**ข้อมูลจะถูกบันทึกอัตโนมัติในเบราว์เซอร์ของคุณ**</div>
+              </div>
+              <div className='toolbar'>
+                <button className='btn sec' onClick={clearAllData} style={{color:'#f00'}}>ล้างข้อมูล & Reset</button>
+                <button className='btn' onClick={downloadCSV}><Download/> ส่งออก CSV</button>
+                <button className='btn sync' onClick={syncToGoogleSheet} disabled={isSyncing}>
+                  <UploadCloud/> {isSyncing ? 'กำลังส่ง...' : 'Sync ไป Google Sheet'}
+                </button>
+              </div>
+            </div>
+
+            <div className='row row-3'>
+              <div className='card'>
+                <h3><SheetIcon/> ตั้งค่า Google Sheet</h3>
+                <label>Google Apps Script Web App URL</label>
+                <input 
+                  type='password' 
+                  value={sheetUrl} 
+                  onChange={e => setSheetUrl(e.target.value)} 
+                  placeholder='https_script.google.com/macros/s/...'/>
+                <div className='sub' style={{marginTop:4, fontSize:11}}>*URL นี้จะถูกบันทึกไว้ในเครื่องของคุณ (ห้ามแชร์)</div>
+              </div>
+
+              <div className='card'>
+                <h3>สมมติฐาน (Emission Factor)</h3>
+                <div className='row' style={{gridTemplateColumns:'1fr 1fr'}}>
+                  <div>
+                    <label>EF ฝังกลบ (Baseline) (kgCO2e/กก.)</label>
+                    <input type='number' step='0.0001' value={efLandfill} onChange={e=>setEfLandfill(+e.target.value||0)} />
+                  </div>
+                  <div>
+                    <label>EF หมัก (Project) (kgCO2e/กก.)</label>
+                    <input type='number' step='0.0001' value={efComposting} onChange={e=>setEfComposting(+e.target.value||0)} />
+                  </div>
+                </div>
+                <div className='row' style={{gridTemplateColumns:'1fr 1fr',marginTop:10}}>
+                  <div>
+                    <label>EF ไฟฟ้า Grid (kgCO2e/kWh)</label>
+                    <input type='number' step='0.0001' value={gridEF} onChange={e=>setGridEF(+e.target.value||0)} />
+                  </div>
+                  <div>
+                    <label>สัดส่วนขยะเข้าสู่กระบวนการ (0–1)</label>
+                    <input type='number' step='0.01' min='0' max='1' value={diversionRate} onChange={e=>setDiversionRate(+e.target.value||0)} />
+                  </div>
+                </div>
+              </div>
+
+              <div className='card'>
+                <h3><Bolt/> ตั้งค่าเครื่อง/หมายเหตุทั่วไป</h3>
+                <div>
+                  <label>ค่าไฟฟ้ากลาง (kWh/วัน) (ถ้าไม่กรอกรายวัน)</label>
+                  <input type='number' value={kwhDefault} onChange={e=>setKwhDefault(+e.target.value||0)} />
+                </div>
+                <div style={{marginTop:10}}>
+                  <label>หมายเหตุ (ทั่วไป)</label>
+                  <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder='เช่น: ใช้ EF Landfill 2.53...'/>
+                </div>
+              </div>
+            </div>
+
+            <div className='card' style={{marginTop:14}}>
+              <div className='head' style={{marginBottom:8}}>
+                <h3>บันทึกประจำวัน</h3>
+                <div className='toolbar'>
+                  <button className='btn sec' onClick={()=>setRows([])}>ล้างรายการในตาราง</button>
+                  <button className='btn' onClick={addRow}>+ เพิ่มแถว</button>
+                </div>
+              </div>
+              <div style={{overflowX:'auto'}}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>วันที่</th>
+                      <th className='right'>ขยะเข้า (กก.)</th>
+                      <th className='right'>วัตถุดิบเสริม (กก.)</th>
+                      <th className='right'>สารปรับปรุงดินออกทั้งหมด (กก.)</th>
+                      <th className='right'>ไฟฟ้า (kWh)</th>
+                      <th>หมายเหตุ</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.length===0? (
+                      <tr><td colSpan='7' className='right' style={{textAlign:'center',color: '#9ca3af'}}>ยังไม่มีบันทึก – กด “เพิ่มแถว”</td></tr>
+                    ): rows.map(r=>(
+                      <tr key={r.id}>
+                        <td><input type='date' value={r.date} onChange={e=>updateRow(r.id,{date:e.target.value})}/></td>
+                        <td className='right'><input type='number' value={r.wasteInKg} onChange={e=>updateRow(r.id,{wasteInKg:+e.target.value||0})}/></td>
+                        <td className='right'><input type='number' value={r.supplementaryKg} onChange={e=>updateRow(r.id,{supplementaryKg:+e.target.value||0})}/></td>
+                        <td className='right'><input type='number' value={r.soilOutKg} onChange={e=>updateRow(r.id,{soilOutKg:+e.target.value||0})}/></td>
+                        <td className='right'><input type='number' placeholder={kwhDefault} value={r.kwh} onChange={e=>updateRow(r.id,{kwh:e.target.value})}/></td>
+                        <td><input type='text' value={r.rowNotes} onChange={e=>updateRow(r.id,{rowNotes:e.target.value})}/></td>
+                        <td><button className='btn sec' onClick={()=>removeRow(r.id)}><Trash/></button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* --- UPDATED KPIs --- */}
+              <div className='kpis' style={{marginTop:12, gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))'}}>
+                <div className='kpi'><div className='name'>จำนวนวัน</div><div className='val'>{num(sum.days,0)} วัน</div></div>
+                <div className='kpi'><div className='name'>รวมขยะเข้า</div><div className='val'>{num(sum.totalWasteIn)} กก.</div></div>
+                <div className='kpi'><div className='name'>รวมวัตถุดิบเสริม</div><div className='val'>{num(sum.totalSupplementaryIn)} กก.</div></div>
+                <div className='kpi'><div className='name'>รวมสารปรับปรุงดินออก</div><div className='val'>{num(sum.totalSoilOut)} กก.</div></div>
+                <div className='kpi'><div className='name'>ขยะที่ใช้คำนวณ</div><div className='val'>{num(sum.wasteToCalculate)} กก.</div></div>
+                <div className='kpi'><div className='name'>รวมไฟฟ้า</div><div className='val'>{num(sum.totalKwh)} kWh</div></div>
+                <div className='kpi' style={{background:'#f3f4f6'}}>
+                    <div className='name'>% สารปรับปรุงดินออก</div>
+                    <div className='val'>{num(sum.soilOutPercent)}%</div>
+                </div>
+                <div className='kpi' style={{background:'#f3f4f6'}}>
+                    <div className='name'>พลังงานเฉลี่ย</div>
+                    <div className='val'>{num(sum.avgKwh)} kWh/วัน</div>
+                </div>
+              </div>
+            </div>
+
+            {rows.length>0 && (
+              <div className='result-grid' style={{marginTop:14}}>
+                <div className='card'>
+                  <h3>ผลลัพธ์หลัก</h3>
+                  <div className='kpis' style={{gridTemplateColumns:'1fr'}}>
+                    <div className='kpi'>
+                      <div className='name'>การหลีกเลี่ยงการปล่อยสุทธิ (Net Avoidance)</div>
+                      <div className='big'>{num(sum.gross_t)} <span style={{fontSize:'14px',fontWeight:500}}>ตันCO2e/งวด</span></div>
+                    </div>
+                    <div className='kpi'>
+                      <div className='name'>การปล่อยจากไฟฟ้า (Emission)</div>
+                      <div className='big'>{num(sum.elec_t)} <span style={{fontSize:'14px',fontWeight:500}}>ตันCO2e/งวด</span></div>
+                    </div>
+                    <div className='kpi'>
+                      <div className='name'>คาร์บอนเครดิตสุทธิ (Net)</div>
+                      <div className='big green'>{num(sum.net_t)} <span style={{fontSize:'14px',fontWeight:500}}>ตันCO2e/งวด</span></div>
+                    </div>
+                    <div className='kpi' style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div>
+                        <div className='name'>เทียบเท่าต้นไม้</div>
+                        <div className='big'>{num(sum.trees,0)} <span style={{fontSize:'14px',fontWeight:500}}>ต้น/งวด</span></div>
+                      </div>
+                      <Leaf/>
+                    </div>
+                  </div>
+                </div>
+
+                {/* --- UPDATED FORMULA DISPLAY --- */}
+                <div className='card'>
+                  <h3>สูตรที่ใช้</h3>
+                  <ul style={{marginTop:6,lineHeight:1.6}}>
+                    <li>ขยะที่ใช้คำนวณ (กก.) = Σ(ขยะเข้า) × สัดส่วนขยะเข้าสู่กระบวนการ</li>
+                    <li>Gross (kgCO2e) = ขยะที่ใช้คำนวณ (กก.) × [EF ฝังกลบ – EF หมัก]</li>
+                    <li>ไฟฟ้า (kgCO2e) = Σ(kWh) × EF ไฟฟ้า</li>
+                    <li>Net (kgCO2e) = max(Gross – ไฟฟ้า, 0)</li>
+                    <li style={{marginTop:8, color:'var(--muted)', fontSize: 12}}>% สารปรับปรุงดินออก = Σ(สารปรับปรุงดินออก) / (Σ(ขยะเข้า) + Σ(วัตถุดิบเสริม))</li>
+                  </ul>
+                  <div className='sub'>*EFs ทั้งหมดสามารถปรับเปลี่ยนได้ตามข้อมูลอ้างอิงล่าสุด</div>
+                </div>
+              </div>
+            )}
+
+            <footer>© 2025 2GO TH • TOGO Carbon Calculator (Daily Log Edition). เครื่องมือนี้ช่วยประเมินศักยภาพเครดิตจากข้อมูลจริงรายวัน</footer>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(<App/>)
+    </script>
+  </body>
+</html>
