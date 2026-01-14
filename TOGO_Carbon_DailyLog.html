@@ -1,437 +1,622 @@
 <!doctype html>
-<html lang='th'>
-  <head>
-    <meta charset='utf-8' />
-    <title>คำนวณคาร์บอนเครดิต – บันทึกประจำวัน (TOGO) [v4 - Full Features]</title>
-    <meta name='viewport' content='width=device-width, initial-scale=1' />
-    <script src='https://unpkg.com/react@18/umd/react.development.js'></script>
-    <script src='https://unpkg.com/react-dom@18/umd/react-dom.development.js'></script>
-    <script src='https://unpkg.com/@babel/standalone/babel.min.js'></script>
-    <style>
-      :root{--bg:#f5f6f7;--card:#ffffff;--muted:#6b7280;--text:#0f172a;--border:#e5e7eb;--accent:#111827;--accent-2:#0ea5e9;--good:#047857;--sync:#1d4ed8;}
-      *{box-sizing:border-box}
-      html,body{height:100%}
-      body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
-      .container{max-width:1080px;margin:24px auto;padding:0 16px}
-      h1{font-size:22px;margin:0 0 4px 0;display:flex;align-items:center;gap:8px}
-      .sub{color:var(--muted);font-size:12.5px;margin-bottom:14px}
-      .row{display:grid;gap:14px}
-      @media(min-width:900px){.row-3{grid-template-columns:repeat(3,1fr)}}
-      .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px}
-      .card h3{margin:0 0 10px 0;font-size:15px;display:flex;align-items:center;gap:8px}
-      label{font-size:12.5px;color:var(--muted);display:block}
-      input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--text);font-size:14px}
-      input::placeholder{color:#9ca3af}
-      input[type="password"]{font-family:monospace;}
-      textarea{min-height:84px;resize:vertical}
-      table{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden}
-      th,td{padding:10px;border-bottom:1px solid var(--border);font-size:14px}
-      th{background:#f3f4f6;text-align:left}
-      .right{text-align:right}
-      .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:12px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;font-size:14px}
-      .btn.sec{background:#fff;color:var(--text);border-color:var(--border)}
-      .btn.sync{background:var(--sync);border-color:var(--sync);}
-      .btn:disabled{opacity:0.5;cursor:not-allowed;}
-      .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-      .kpis{display:grid;gap:10px}
-      @media(min-width:700px){.kpis{grid-template-columns:repeat(4,1fr)}}
-      .kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px}
-      .kpi .name{font-size:12px;color:var(--muted)}
-      .kpi .val{font-size:20px;font-weight:700}
-      .pill{display:inline-flex;gap:6px;align-items:center;padding:10px;border:1px solid var(--border);background:#fff;border-radius:12px}
-      .result-grid{display:grid;gap:14px}
-      @media(min-width:900px){.result-grid{grid-template-columns:1fr 2fr}}
-      .big{font-size:26px;font-weight:800}
-      .green{color:var(--good)}
-      footer{color:var(--muted);font-size:12px;margin-top:16px}
-      .icon{width:18px;height:18px;display:inline-block}
-      .head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
-    </style>
-  </head>
-  <body>
-    <div id='root'></div>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <title>TOGO Daily Log - Pro Version (Sheet Matched)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <script type='text/babel'>
-      const {useState, useMemo, useEffect} = React;
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-      // --- Custom Hook for Local Storage ---
-      function useLocalStorage(key, initialValue) {
-        const [storedValue, setStoredValue] = useState(() => {
-          try {
-            const item = window.localStorage.getItem(key);
-            return item ? JSON.parse(item) : initialValue;
-          } catch (error) {
-            console.warn('Error reading localStorage key “' + key + '”: ', error);
-            return initialValue;
-          }
+  <style>
+    :root{ --bg:#f8fafc;--card:#ffffff;--muted:#64748b;--text:#1e293b;--border:#e2e8f0;--accent:#0f172a;--good:#10b981;--blue:#2563eb;--warn:#f59e0b;--bad:#ef4444; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+    .container{max-width:1200px;margin:20px auto;padding:0 15px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:15px;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
+    .head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:12px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;font-weight:600;transition:0.2s;}
+    .btn.sec{background:#fff;color:var(--text);border-color:var(--border)}
+    .btn.blue{background:var(--blue);border-color:var(--blue)}
+    .btn.bad{background:var(--bad);border-color:var(--bad)}
+    .btn.good{background:var(--good);border-color:var(--good)}
+    .btn:disabled{opacity:0.4;cursor:not-allowed}
+    input,textarea{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:14px}
+
+    table{width:100%;border-collapse:collapse;min-width:1100px}
+    th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:center}
+    th{background:#f1f5f9;font-size:12px;color:var(--muted);text-transform:uppercase}
+
+    .kpis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .kpi { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 15px; position: relative; overflow: hidden; }
+    .kpi .val { font-size: 22px; font-weight: 800; position: relative; z-index: 1; }
+    .kpi::after { content: attr(data-icon); position: absolute; right: 5px; bottom: -10px; font-size: 45px; opacity: 0.12; filter: grayscale(0.5); }
+
+    .badge{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:bold;display:inline-block}
+    .bg-good{color:var(--good);background:#ecfdf5}
+    .bg-warn{color:var(--warn);background:#fffbeb}
+    .bg-bad{color:var(--bad);background:#fef2f2}
+
+    .modalBack{position:fixed;inset:0;background:rgba(15,23,42,0.6);display:flex;align-items:center;justify-content:center;padding:15px;z-index:1000;backdrop-filter:blur(4px)}
+    .modal{max-width:720px;width:100%;background:#fff;border-radius:20px;padding:25px;max-height:90vh;overflow-y:auto}
+    .radioRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+    .radioBtn{display:flex;align-items:center;gap:6px;padding:10px 16px;border:1px solid var(--border);border-radius:12px;cursor:pointer;user-select:none}
+
+    .admin-panel{background:#eff6ff;border:2px dashed var(--blue);margin-bottom:15px;animation:fadeIn 0.3s}
+    @keyframes fadeIn { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+    .rowhint{color:var(--muted);font-size:12px}
+
+    /* ✅ ตารางแน่นขึ้น + ไม่ตัดบรรทัด (แก้สถานะตกบรรทัด) */
+    table input{ padding:6px 8px; font-size:13px; }
+    th, td{ padding:6px 6px; white-space:nowrap; }
+    .badge{ white-space:nowrap; min-width:84px; text-align:center; }
+    td:nth-child(1){min-width:110px;} /* วันที่ */
+    td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5), td:nth-child(6){min-width:90px;}
+  </style>
+</head>
+
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+  const { useState, useMemo, useEffect } = React;
+
+  // --- Constants (Sheet Matched) ---
+  const ITEMS_DAILY = [
+    {k:"d1", t:"ความปลอดภัย/พื้นที่รอบเครื่อง"},
+    {k:"d2", t:"พื้นแห้ง/ไม่มีน้ำมันรั่ว"},
+    {k:"d3", t:"ความสะอาดบริเวณเครื่อง"},
+    {k:"d4", t:"สภาพฝา/ประตู/จุดล็อก"},
+    {k:"d5", t:"เสียง/สั่นปกติ"},
+    {k:"d6", t:"หน้าจอไม่มี Alarm"}
+  ];
+
+  const STATUS_STD = [
+    {v:"ok", l:"ปกติ"},
+    {v:"problem", l:"พบปัญหา"},
+    {v:"na", l:"ไม่ตรวจ"}
+  ];
+
+  const STATUS_FILL = [
+    {v:"done", l:"เติมแล้ว"},
+    {v:"problem", l:"พบปัญหา"},
+    {v:"not", l:"ไม่ได้เติม"}
+  ];
+  const STATUS_CHANGE = [
+    {v:"done", l:"เปลี่ยนแล้ว"},
+    {v:"problem", l:"พบปัญหา"},
+    {v:"not", l:"ไม่ได้เปลี่ยน"}
+  ];
+
+  const ITEMS_M = [
+    {k:"m1", t:"ความสะอาดรอบเครื่อง"},
+    {k:"m2", t:"น็อต/โบลต์ไม่หลวม"},
+    {k:"m3", t:"คราบน้ำมัน/จาระบีปกติ"},
+    {k:"m4", t:"สายไฟ/ปลั๊กปกติ"},
+    {k:"m5", t:"ข้อต่อไฮดรอลิก"},
+    {k:"m6", t:"เติมน้ำมันไฮดรอลิก", opts: STATUS_FILL},
+    {k:"m7", t:"เติมจาระบี", opts: STATUS_FILL},
+    {k:"m8", t:"เปลี่ยนน้ำในถังหมัก", opts: STATUS_CHANGE},
+    {k:"m9", t:"เปลี่ยนน้ำในถังกรองกลิ่น", opts: STATUS_CHANGE}
+  ];
+
+  // --- Helpers ---
+  const num = (v, d=2) => new Intl.NumberFormat("th-TH",{maximumFractionDigits:d}).format(v||0);
+  const getToday = () => new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+  const safeParse = (k, f) => { try { return JSON.parse(localStorage.getItem(k) || f); } catch { return JSON.parse(f); } };
+  const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+
+  const allChecked = (obj, items) => items.every(it => !!obj?.[it.k]);
+  const anyProblem = (obj) => Object.values(obj || {}).includes("problem");
+
+  const daysBetween = (isoA, isoB) => {
+    const a = new Date(isoA), b = new Date(isoB);
+    const diff = a.getTime() - b.getTime();
+    return Math.floor(diff / 86400000);
+  };
+
+  function App(){
+    // --- State ---
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [machineId, setMachineId] = useState(() => localStorage.getItem("tg_machineId") || "TG1000S-A01");
+    const [endpoint, setEndpoint] = useState(() => localStorage.getItem("tg_endpoint") || "");
+    const [apiToken, setApiToken] = useState(() => localStorage.getItem("tg_token") || "");
+
+    const [rows, setRows] = useState(() => safeParse("tg_rows_v3_sheet", "[]"));
+    const [selId, setSelId] = useState(null);
+
+    const [mCk, setMCk] = useState(() => safeParse("tg_mck_15_30_v1", "{}"));
+    const [mSavedAtISO, setMSavedAtISO] = useState(() => localStorage.getItem("tg_m_savedAtISO") || "");
+
+    const [showDaily, setShowDaily] = useState(false);
+    const [showM, setShowM] = useState(false);
+
+    const [syncing, setSyncing] = useState(false);
+
+    // --- Persist ---
+    useEffect(() => {
+      localStorage.setItem("tg_machineId", machineId);
+      localStorage.setItem("tg_endpoint", endpoint);
+      localStorage.setItem("tg_token", apiToken);
+      localStorage.setItem("tg_rows_v3_sheet", JSON.stringify(rows));
+      localStorage.setItem("tg_mck_15_30_v1", JSON.stringify(mCk));
+      localStorage.setItem("tg_m_savedAtISO", mSavedAtISO || "");
+    }, [machineId, endpoint, apiToken, rows, mCk, mSavedAtISO]);
+
+    // init selection
+    useEffect(() => {
+      if (!rows.length) {
+        addRow();
+      } else if (!selId) {
+        setSelId(rows[0].id);
+      }
+      // eslint-disable-next-line
+    }, []);
+
+    // --- Derived: Overdue 15 days? ---
+    const nowISO = new Date().toISOString();
+    const oldestRowDate = useMemo(() => {
+      if (!rows.length) return getToday();
+      const ds = rows.map(r => String(r.date || "").slice(0,10)).filter(Boolean).sort();
+      return ds[0] || getToday();
+    }, [rows]);
+
+    const mComplete = useMemo(() => allChecked(mCk, ITEMS_M), [mCk]);
+    const baseISO = mSavedAtISO || (oldestRowDate ? `${oldestRowDate}T00:00:00.000Z` : "");
+    const mOverdue = useMemo(() => {
+      if (!baseISO) return false;
+      return daysBetween(nowISO, baseISO) >= 15 && !mComplete;
+    }, [nowISO, baseISO, mComplete]);
+
+    // --- Summary ---
+    const computeSummary = (row) => {
+      const dOK = row.dailyComplete && allChecked(row.dailyCk, ITEMS_DAILY);
+      const mHasAny = Object.keys(mCk || {}).length > 0;
+      const mAll = allChecked(mCk, ITEMS_M);
+      const hasProb = anyProblem(row.dailyCk) || anyProblem(mCk);
+
+      if (hasProb) return "⚠ พบปัญหา";
+      if (dOK && (!mHasAny || mAll)) return "✅ เรียบร้อย";
+      if (!dOK) return "⏳ รอเช็ค";
+      return "⏳ ไม่ครบ";
+    };
+
+    // ✅ helper: หาแถวที่มีวันที่ซ้ำ (ยกเว้นตัวเอง)
+    const findRowByDate = (isoDate, exceptId) => {
+      const d = String(isoDate || "").slice(0,10);
+      if (!d) return null;
+      return rows.find(r => r.id !== exceptId && String(r.date || "").slice(0,10) === d) || null;
+    };
+
+    // --- Actions ---
+    const addRow = () => {
+      const today = getToday();
+      const dup = rows.find(r => String(r.date || "").slice(0,10) === today);
+
+      // ✅ วันนี้มีอยู่แล้ว → เด้งไปแถวนั้น
+      if (dup) {
+        alert("วันนี้มีแถวอยู่แล้ว ✅ จะพาไปที่แถวนั้น");
+        setSelId(dup.id);
+        return;
+      }
+
+      const nr = {
+        id: uid(),
+        date: today,
+        kwh: "",
+        humidityPct: "",
+        soilOutKg: "",
+        wasteInKg: "",
+        supplementaryKg: "",
+        note: "",
+        dailyCk: {},
+        dailyComplete: false,
+        savedAt: "",
+        syncedAt: ""
+      };
+      setRows(prev => [...prev, nr]);
+      setSelId(nr.id);
+    };
+
+    const patchRow = (id, patch) => setRows(prev =>
+      prev.map(r => {
+        if (r.id !== id) return r;
+        const next = { ...r, ...patch };
+
+        const core = ["date","kwh","humidityPct","soilOutKg","wasteInKg","supplementaryKg","note","dailyCk"];
+        const changedCore = core.some(k => k in patch);
+        if (changedCore && r.syncedAt) next.syncedAt = ""; // dirty
+        return next;
+      })
+    );
+
+    // ✅ เปลี่ยนวันที่: ถ้าซ้ำ → เด้งไปแถวเดิมและไม่ให้ซ้ำ
+    const handleDateChange = (rowId, newDate) => {
+      const dup = findRowByDate(newDate, rowId);
+      if (dup) {
+        alert("วันที่นี้มีอยู่แล้ว ✅ จะพาไปที่แถวนั้น");
+        setSelId(dup.id);
+        return;
+      }
+      patchRow(rowId, { date: newDate });
+    };
+
+    const deleteRow = (id) => {
+      if(!confirm("ยืนยันลบรายการนี้?")) return;
+      const next = rows.filter(r => r.id !== id);
+      setRows(next);
+      if (selId === id) setSelId(next.length ? next[0].id : null);
+    };
+
+    // ✅ บันทึก = กดปุ่มด้านนอกเท่านั้น (ต้อง d1–d6 ครบ) + กดซ้ำได้ + กันวันที่ซ้ำ
+    const handleSaveDaily = () => {
+      const row = rows.find(r => r.id === selId);
+      if (!row) return;
+
+      if (!allChecked(row.dailyCk, ITEMS_DAILY)) {
+        return alert("กรุณาเช็คลิสต์รายวันให้ครบทุกข้อ");
+      }
+
+      // ✅ กันวันที่ซ้ำ (เผื่อมีเคสหลุด)
+      const dup = findRowByDate(row.date, selId);
+      if (dup) {
+        alert("วันที่นี้มีอยู่แล้ว ✅ จะพาไปที่แถวนั้น");
+        setSelId(dup.id);
+        return;
+      }
+
+      const now = new Date().toLocaleString("th-TH");
+      setRows(prev => prev.map(r => {
+        if (r.id !== selId) return r;
+        return { ...r, dailyComplete: true, savedAt: now, syncedAt: "" }; // กดซ้ำได้
+      }));
+
+      alert("บันทึกสำเร็จ ✅ (หากต้องการส่งขึ้น Cloud ให้กดปุ่ม Sync Cloud)");
+    };
+
+    const handleSaveM = () => {
+      if (!allChecked(mCk, ITEMS_M)) return alert("กรุณาเช็คลิสต์ 15–30 วันให้ครบทุกข้อ");
+      setMSavedAtISO(new Date().toISOString());
+      setShowM(false);
+      alert("บันทึกเช็คลิสต์ 15–30 วันสำเร็จ ✅");
+    };
+
+    // --- Sync ---
+    const syncNow = async (currentRows = rows) => {
+      if (!endpoint) return alert("กรุณาใส่ URL Address ในหน้า Admin");
+      if (!apiToken) return alert("กรุณาใส่ Password ในหน้า Admin");
+
+      setSyncing(true);
+      try {
+        const dailyToSend = currentRows.filter(r => r.dailyComplete && !r.syncedAt);
+        if (!dailyToSend.length) {
+          alert("ไม่มีข้อมูลใหม่ที่ต้องส่ง");
+          return;
+        }
+
+        const payload = dailyToSend.map(r => ({
+          machineId,
+          date: String(r.date || "").slice(0,10),
+          kwh: +r.kwh || 0,
+          humidity: (r.humidityPct === "" ? "" : +r.humidityPct),
+          soilOut: +r.soilOutKg || 0,
+          wasteIn: +r.wasteInKg || 0,
+          supplementaryKg: (r.supplementaryKg === "" ? "" : +r.supplementaryKg),
+          note: r.note || "",
+
+          d1: r.dailyCk?.d1 || "-",
+          d2: r.dailyCk?.d2 || "-",
+          d3: r.dailyCk?.d3 || "-",
+          d4: r.dailyCk?.d4 || "-",
+          d5: r.dailyCk?.d5 || "-",
+          d6: r.dailyCk?.d6 || "-",
+
+          m1: mCk?.m1 || "-",
+          m2: mCk?.m2 || "-",
+          m3: mCk?.m3 || "-",
+          m4: mCk?.m4 || "-",
+          m5: mCk?.m5 || "-",
+          m6: mCk?.m6 || "-",
+          m7: mCk?.m7 || "-",
+          m8: mCk?.m8 || "-",
+          m9: mCk?.m9 || "-",
+
+          checkSummary: computeSummary(r),
+          savedAt: r.savedAt || ""
+        }));
+
+        await fetch(`${endpoint}?token=${encodeURIComponent(apiToken)}`, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
         });
-        useEffect(() => {
-          try {
-            window.localStorage.setItem(key, JSON.stringify(storedValue));
-          } catch (error) {
-            console.error('Error writing to localStorage key “' + key + '”: ', error);
-          }
-        }, [key, storedValue]);
-        return [storedValue, setStoredValue];
+
+        const now = new Date().toLocaleString("th-TH");
+        setRows(prev => prev.map(r => dailyToSend.some(x => x.id === r.id) ? { ...r, syncedAt: now } : r));
+        alert(`ส่งข้อมูล ${dailyToSend.length} รายการแล้ว`);
+
+      } catch (e) {
+        console.error(e);
+        alert("ส่งข้อมูลไม่สำเร็จ (เช็ค Console / เน็ต / URL)");
+      } finally {
+        setSyncing(false);
       }
+    };
 
-      // --- Simple Thai number formatter ---
-      const num = (v, d=2)=> new Intl.NumberFormat('th-TH',{maximumFractionDigits:d}).format(v||0);
+    // --- Export Excel ---
+    const handleExportExcel = () => {
+      const data = rows.map(r => ({
+        "รหัสเครื่อง": machineId,
+        "วันที่": String(r.date || "").slice(0,10),
+        "หน่วยไฟ (kWh)": r.kwh,
+        "ความชื้น (%)": r.humidityPct,
+        "สารปรับปรุงดินออก (kg)": r.soilOutKg,
+        "ขยะเข้า (kg)": r.wasteInKg,
+        "วัสดุปรับสภาพ (kg)": r.supplementaryKg,
+        "หมายเหตุ": r.note || "",
+        "d1": r.dailyCk?.d1 || "-",
+        "d2": r.dailyCk?.d2 || "-",
+        "d3": r.dailyCk?.d3 || "-",
+        "d4": r.dailyCk?.d4 || "-",
+        "d5": r.dailyCk?.d5 || "-",
+        "d6": r.dailyCk?.d6 || "-",
+        "m1": mCk?.m1 || "-",
+        "m2": mCk?.m2 || "-",
+        "m3": mCk?.m3 || "-",
+        "m4": mCk?.m4 || "-",
+        "m5": mCk?.m5 || "-",
+        "m6": mCk?.m6 || "-",
+        "m7": mCk?.m7 || "-",
+        "m8": mCk?.m8 || "-",
+        "m9": mCk?.m9 || "-",
+        "Checklist สรุป": computeSummary(r),
+        "บันทึกเมื่อ": r.savedAt || "",
+        "Sync ล่าสุด": r.syncedAt || ""
+      }));
 
-      // --- SVG Icons ---
-      const Leaf = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><path d='M5 21c8 0 14-6 14-14V3a2 2 0 0 0-2-2h-4C5 1 1 5 1 11a10 10 0 0 0 10 10h0'/></svg>);
-      const Download = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><path d='M7 10l5 5 5-5'/><path d='M12 15V3'/></svg>);
-      const Bolt = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><path d='M13 2L3 14h7l-1 8 10-12h-7l1-8z'/></svg>);
-      const Trash = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><polyline points='3 6 5 6 21 6'/><path d='M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6'/><path d='M10 11v6'/><path d='M14 11v6'/><path d='M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2'/></svg>);
-      const Calculator = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><rect x='4' y='2' width='16' height='20' rx='2'/><rect x='8' y='6' width='8' height='4'/><path d='M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01'/></svg>);
-      const UploadCloud = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><path d='M7 10l5-5 5 5'/><path d='M12 15V3'/></svg>);
-      const SheetIcon = () => (<svg className='icon' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/></svg>);
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "DailyLog");
+      XLSX.writeFile(wb, `TOGO_DailyLog_${getToday()}.xlsx`);
+    };
 
-      function App(){
-        // --- Assumptions stored in Local Storage ---
-        const [efLandfill, setEfLandfill] = useLocalStorage('togo_efLandfill', 2.53);
-        const [efComposting, setEfComposting] = useLocalStorage('togo_efComposting', 0.3326);
-        const [gridEF, setGridEF] = useLocalStorage('togo_gridEF', 0.5986);
-        const [kwhDefault, setKwhDefault] = useLocalStorage('togo_kwhDefault', 130);
-        const [diversionRate, setDiversionRate] = useLocalStorage('togo_diversionRate', 1);
-        const [notes, setNotes] = useLocalStorage('togo_notes', 'ข้อแนะนำ: ใช้ EF Landfill 2.53, EF Composting 0.3326, EF ไฟฟ้า 0.5986 ตาม TGO');
-        
-        // --- State for Google Sheet URL ---
-        const [sheetUrl, setSheetUrl] = useLocalStorage('togo_sheetUrl', '');
-        const [isSyncing, setIsSyncing] = useState(false);
+    // Admin unlock (3 คลิก)
+    const handleTitleClick = (e) => {
+      if (e.detail === 3) {
+        const pass = prompt("Admin Password:");
+        if (pass === "TG123") setIsAdmin(true);
+      }
+    };
 
-        const efNetAvoidance = useMemo(() => Math.max(0, efLandfill - efComposting), [efLandfill, efComposting]); 
+    // --- KPIs ---
+    const summary = useMemo(() => {
+      const d = rows.reduce((a, b) => ({
+        w: a.w + (+b.wasteInKg || 0),
+        s: a.s + (+b.soilOutKg || 0),
+        k: a.k + (+b.kwh || 0)
+      }), {w:0, s:0, k:0});
+      const net = Math.max(0, (d.w * 2.1974) - (d.k * 0.5986)) / 1000;
+      return { ...d, net, trees: net * 24.56 };
+    }, [rows]);
 
-        // --- Daily logs stored in Local Storage (with new fields) ---
-        const [rows, setRows] = useLocalStorage('togo_dailyRows', [
-          { id: crypto.randomUUID(), date: '2025-10-29', wasteInKg: 1000, soilOutKg: 200, kwh: 150, supplementaryKg: 50, rowNotes: 'ทดสอบ' },
-          { id: crypto.randomUUID(), date: '2025-10-30', wasteInKg: 1500, soilOutKg: 300, kwh: '', supplementaryKg: 75, rowNotes: '' },
-        ]);
+    const selRow = rows.find(r => r.id === selId);
 
-        const addRow = () => setRows(r => [...r, { 
-          id: crypto.randomUUID(), 
-          date: new Date().toISOString().slice(0,10), 
-          wasteInKg: 0, 
-          soilOutKg: 0, 
-          kwh: '',
-          supplementaryKg: 0, // NEW
-          rowNotes: ''       // NEW
-        }]);
-        const updateRow = (id, patch) => setRows(r => r.map(x => x.id===id ? {...x, ...patch} : x));
-        const removeRow = (id) => setRows(r => r.filter(x => x.id !== id));
-        
-        const clearAllData = () => {
-            if(window.confirm('คุณแน่ใจหรือไม่ที่จะล้างข้อมูลทั้งหมด? ข้อมูลทั้งหมดจะหายไปและกลับสู่ค่าเริ่มต้น! (ไม่รวม URL)')) {
-                setEfLandfill(2.53);
-                setEfComposting(0.3326);
-                setGridEF(0.5986);
-                setKwhDefault(130);
-                setDiversionRate(1);
-                setNotes('ข้อแนะนำ: ...');
-                setRows([]);
-            }
-        };
+    const statusBadge = (r) => {
+      if (r.syncedAt) return <span className="badge bg-good">☁️ ส่งแล้ว</span>;
+      if (r.dailyComplete) return <span className="badge bg-warn">⏳ รอส่ง</span>;
+      return <span className="badge bg-warn">📝 รอเช็ค</span>;
+    };
 
-        // --- Updated Calculation Logic ---
-        const sum = useMemo(()=>{
-          const totalWasteIn = rows.reduce((s,r)=> s + Math.max(0, +r.wasteInKg||0), 0);
-          const totalSoilOut = rows.reduce((s,r)=> s + Math.max(0, +r.soilOutKg||0), 0);
-          const totalSupplementaryIn = rows.reduce((s,r)=> s + Math.max(0, +r.supplementaryKg||0), 0); // NEW
-          
-          const wasteToCalculate = totalWasteIn * Math.min(1, Math.max(0, diversionRate));
-          
-          const totalKwh = rows.reduce((s,r)=> s + Math.max(0, r.kwh===''? kwhDefault : +r.kwh||0), 0);
+    const mBtnClass = mComplete ? "btn good" : (mOverdue ? "btn bad" : "btn sec");
+    const mBtnText = mComplete ? "✅ เช็คลิส 15–30 วันแล้ว" : (mOverdue ? "⚠ เช็คลิส 15–30 วัน (เกิน 15 วัน)" : "🧰 เช็คลิส 15–30 วัน");
 
-          const gross_kg = wasteToCalculate * efNetAvoidance; 
-          const elec_kg = totalKwh * Math.max(0, gridEF);
-          const net_kg = Math.max(0, gross_kg - elec_kg);
-          
-          const gross_t = gross_kg/1000, elec_t = elec_kg/1000, net_t = net_kg/1000;
-          const trees = net_t * 24.5676;
-
-          // --- NEW KPIs ---
-          const days = rows.length;
-          const avgKwh = (days > 0) ? totalKwh / days : 0;
-          const totalMassIn = totalWasteIn + totalSupplementaryIn;
-          const soilOutPercent = (totalMassIn > 0) ? (totalSoilOut / totalMassIn) * 100 : 0;
-          
-          return { 
-            totalWasteIn, totalSoilOut, wasteToCalculate, totalKwh, gross_t, elec_t, net_t, trees, 
-            days, totalSupplementaryIn, avgKwh, soilOutPercent
-          };
-        }, [rows, efNetAvoidance, gridEF, kwhDefault, diversionRate]);
-
-        // --- Function to Sync Data to Google Sheet (Updated) ---
-        const syncToGoogleSheet = () => {
-          if (!sheetUrl) {
-            alert('กรุณาใส่ Web App URL ของ Google Apps Script ในช่องตั้งค่าก่อนครับ');
-            return;
-          }
-          if (rows.length === 0) {
-            alert('ไม่มีข้อมูลในตารางที่จะส่งครับ');
-            return;
-          }
-          
-          if (!window.confirm(`ยืนยันการส่งข้อมูล ${rows.length} แถว ไปยัง Google Sheet?\n(ข้อมูลในตารางนี้จะไม่ถูกลบ)`)) {
-            return;
-          }
-
-          setIsSyncing(true);
-          
-          // 1. เตรียมข้อมูล (รวมฟิลด์ใหม่)
-          const dataToSync = rows.map(r => ({
-            date: r.date,
-            wasteInKg: r.wasteInKg,
-            supplementaryKg: +r.supplementaryKg || 0, // NEW
-            soilOutKg: r.soilOutKg,
-            kwh: r.kwh === '' ? kwhDefault : (+r.kwh || 0),
-            rowNotes: r.rowNotes || '' // NEW
-          }));
-
-          // 2. ส่งข้อมูลด้วย fetch
-          fetch(sheetUrl, {
-            method: 'POST',
-            cache: 'no-cache',
-            redirect: 'follow',
-            body: JSON.stringify(dataToSync),
-            headers: {
-              'Content-Type': 'text/plain;charset=utf-8',
-            },
-          })
-          .then(res => res.json())
-          .then(data => {
-            if (data.status === 'success') {
-              alert(`ส่งข้อมูลสำเร็จ! ${data.rowsAdded} แถว ถูกเพิ่มไปยัง Google Sheet`);
-              // setRows([]); // (ทางเลือก) ลบข้อมูลที่ Sync แล้ว
-            } else {
-              throw new Error(data.message);
-            }
-          })
-          .catch(error => {
-             console.error('Error syncing to Google Sheet:', error);
-             alert('เกิดข้อผิดพลาดในการ Sync: \n' + error.message);
-          })
-          .finally(() => {
-             setIsSyncing(false);
-          });
-        };
-
-        // --- Function for CSV Download (Updated) ---
-        const downloadCSV = () => {
-          // NEW: Updated Headers
-          const head = [['วันที่','ขยะเข้า (กก.)','วัตถุดิบเสริม (กก.)','สารปรับปรุงดินออกทั้งหมด (กก.)','ไฟฟ้า (kWh)', 'หมายเหตุ']];
-          // NEW: Updated Body
-          const body = rows.map(r => [
-            r.date, 
-            r.wasteInKg, 
-            r.supplementaryKg, 
-            r.soilOutKg, 
-            r.kwh===''? kwhDefault : r.kwh,
-            r.rowNotes
-          ]);
-          
-          const sumRows = [
-            [],['สรุป','','','','',''],
-            ['จำนวนวัน', sum.days,'','','',''],
-            ['รวมขยะเข้า (กก.)', sum.totalWasteIn,'','','',''],
-            ['รวมวัตถุดิบเสริม (กก.)', sum.totalSupplementaryIn,'','','',''], // NEW
-            ['รวมสารปรับปรุงดินออก (กก.)', sum.totalSoilOut,'','','',''], // Renamed
-            ['ขยะที่ใช้คำนวณ (กก.)', sum.wasteToCalculate,'','','',''],
-            ['รวมไฟฟ้า (kWh)', sum.totalKwh,'','','',''],
-            ['% สารปรับปรุงดินออก', sum.soilOutPercent.toFixed(2) + '%','','','',''], // NEW
-            ['พลังงานเฉลี่ย (kWh/วัน)', sum.avgKwh.toFixed(2),'','','',''], // NEW
-            [],
-            ['EF Landfill (kgCO2e/กก.)', efLandfill,"","","",""],
-            ['EF Composting (kgCO2e/กก.)', efComposting,"","","",""],
-            ['EF สุทธิขยะ (kgCO2e/กก.)', efNetAvoidance.toFixed(4),"","","",""],
-            ['EF ไฟฟ้า (kgCO2e/kWh)', gridEF,"","","",""],
-            ['Gross (ตันCO2e)', sum.gross_t.toFixed(3),"","","",""],
-            ['ไฟฟ้า (ตันCO2e)', sum.elec_t.toFixed(3),"","","",""],
-            ['Net (ตันCO2e)', sum.net_t.toFixed(3),"","","",""],
-            ['เทียบเท่าต้นไม้ (ต้น)', Math.round(sum.trees),"","","",""],
-            ['หมายเหตุทั่วไป', notes.replaceAll('\n',' '), '', '', '', ''],
-          ];
-          const all = [...head, ...body, ...sumRows];
-          const csv = all.map(r => r.map(x => `"${String(x).replaceAll('"','""')}"`).join(',')).join('\r\n');
-          const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = `TOGO_DailyLog_${new Date().toISOString().slice(0,10)}.csv`;
-          a.click();
-          URL.revokeObjectURL(url);
-        };
-
-        return (
-          <div className='container'>
-            <div className='head'>
-              <div>
-                <h1><Calculator/> คำนวณคาร์บอนเครดิต – บันทึกประจำวัน (TOGO)</h1>
-                <div className='sub'>**ข้อมูลจะถูกบันทึกอัตโนมัติในเบราว์เซอร์ของคุณ**</div>
-              </div>
-              <div className='toolbar'>
-                <button className='btn sec' onClick={clearAllData} style={{color:'#f00'}}>ล้างข้อมูล & Reset</button>
-                <button className='btn' onClick={downloadCSV}><Download/> ส่งออก CSV</button>
-                <button className='btn sync' onClick={syncToGoogleSheet} disabled={isSyncing}>
-                  <UploadCloud/> {isSyncing ? 'กำลังส่ง...' : 'Sync ไป Google Sheet'}
-                </button>
-              </div>
+    return (
+      <div className="container">
+        {isAdmin && (
+          <div className="card admin-panel">
+            <div className="head">
+              <h3 style={{margin:0}}>⚙️ Admin Config</h3>
+              <button className="btn bad" onClick={()=>setIsAdmin(false)}>Close Admin</button>
             </div>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(250px, 1fr))', gap:15}}>
+              <div><label>รหัสเครื่อง</label><input value={machineId} onChange={e=>setMachineId(e.target.value)} /></div>
 
-            <div className='row row-3'>
-              <div className='card'>
-                <h3><SheetIcon/> ตั้งค่า Google Sheet</h3>
-                <label>Google Apps Script Web App URL</label>
-                <input 
-                  type='password' 
-                  value={sheetUrl} 
-                  onChange={e => setSheetUrl(e.target.value)} 
-                  placeholder='https_script.google.com/macros/s/...'/>
-                <div className='sub' style={{marginTop:4, fontSize:11}}>*URL นี้จะถูกบันทึกไว้ในเครื่องของคุณ (ห้ามแชร์)</div>
-              </div>
+              {/* ✅ เปลี่ยนคำให้คนเข้าใจง่าย */}
+              <div><label>URL Address</label><input value={endpoint} placeholder="https://script.google.com/macros/s/.../exec" onChange={e=>setEndpoint(e.target.value)} /></div>
+              <div><label>Password</label><input type="password" value={apiToken} placeholder="รหัสที่ตั้งไว้ใน Apps Script" onChange={e=>setApiToken(e.target.value)} /></div>
 
-              <div className='card'>
-                <h3>สมมติฐาน (Emission Factor)</h3>
-                <div className='row' style={{gridTemplateColumns:'1fr 1fr'}}>
-                  <div>
-                    <label>EF ฝังกลบ (Baseline) (kgCO2e/กก.)</label>
-                    <input type='number' step='0.0001' value={efLandfill} onChange={e=>setEfLandfill(+e.target.value||0)} />
-                  </div>
-                  <div>
-                    <label>EF หมัก (Project) (kgCO2e/กก.)</label>
-                    <input type='number' step='0.0001' value={efComposting} onChange={e=>setEfComposting(+e.target.value||0)} />
-                  </div>
-                </div>
-                <div className='row' style={{gridTemplateColumns:'1fr 1fr',marginTop:10}}>
-                  <div>
-                    <label>EF ไฟฟ้า Grid (kgCO2e/kWh)</label>
-                    <input type='number' step='0.0001' value={gridEF} onChange={e=>setGridEF(+e.target.value||0)} />
-                  </div>
-                  <div>
-                    <label>สัดส่วนขยะเข้าสู่กระบวนการ (0–1)</label>
-                    <input type='number' step='0.01' min='0' max='1' value={diversionRate} onChange={e=>setDiversionRate(+e.target.value||0)} />
-                  </div>
-                </div>
-              </div>
-
-              <div className='card'>
-                <h3><Bolt/> ตั้งค่าเครื่อง/หมายเหตุทั่วไป</h3>
-                <div>
-                  <label>ค่าไฟฟ้ากลาง (kWh/วัน) (ถ้าไม่กรอกรายวัน)</label>
-                  <input type='number' value={kwhDefault} onChange={e=>setKwhDefault(+e.target.value||0)} />
-                </div>
-                <div style={{marginTop:10}}>
-                  <label>หมายเหตุ (ทั่วไป)</label>
-                  <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder='เช่น: ใช้ EF Landfill 2.53...'/>
-                </div>
-              </div>
+              <div className="rowhint">* ส่งแบบ no-cors (ส่งได้ แต่หน้าเว็บอ่านผลตอบกลับไม่ได้)</div>
             </div>
-
-            <div className='card' style={{marginTop:14}}>
-              <div className='head' style={{marginBottom:8}}>
-                <h3>บันทึกประจำวัน</h3>
-                <div className='toolbar'>
-                  <button className='btn sec' onClick={()=>setRows([])}>ล้างรายการในตาราง</button>
-                  <button className='btn' onClick={addRow}>+ เพิ่มแถว</button>
-                </div>
-              </div>
-              <div style={{overflowX:'auto'}}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>วันที่</th>
-                      <th className='right'>ขยะเข้า (กก.)</th>
-                      <th className='right'>วัตถุดิบเสริม (กก.)</th>
-                      <th className='right'>สารปรับปรุงดินออกทั้งหมด (กก.)</th>
-                      <th className='right'>ไฟฟ้า (kWh)</th>
-                      <th>หมายเหตุ</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.length===0? (
-                      <tr><td colSpan='7' className='right' style={{textAlign:'center',color: '#9ca3af'}}>ยังไม่มีบันทึก – กด “เพิ่มแถว”</td></tr>
-                    ): rows.map(r=>(
-                      <tr key={r.id}>
-                        <td><input type='date' value={r.date} onChange={e=>updateRow(r.id,{date:e.target.value})}/></td>
-                        <td className='right'><input type='number' value={r.wasteInKg} onChange={e=>updateRow(r.id,{wasteInKg:+e.target.value||0})}/></td>
-                        <td className='right'><input type='number' value={r.supplementaryKg} onChange={e=>updateRow(r.id,{supplementaryKg:+e.target.value||0})}/></td>
-                        <td className='right'><input type='number' value={r.soilOutKg} onChange={e=>updateRow(r.id,{soilOutKg:+e.target.value||0})}/></td>
-                        <td className='right'><input type='number' placeholder={kwhDefault} value={r.kwh} onChange={e=>updateRow(r.id,{kwh:e.target.value})}/></td>
-                        <td><input type='text' value={r.rowNotes} onChange={e=>updateRow(r.id,{rowNotes:e.target.value})}/></td>
-                        <td><button className='btn sec' onClick={()=>removeRow(r.id)}><Trash/></button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* --- UPDATED KPIs --- */}
-              <div className='kpis' style={{marginTop:12, gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))'}}>
-                <div className='kpi'><div className='name'>จำนวนวัน</div><div className='val'>{num(sum.days,0)} วัน</div></div>
-                <div className='kpi'><div className='name'>รวมขยะเข้า</div><div className='val'>{num(sum.totalWasteIn)} กก.</div></div>
-                <div className='kpi'><div className='name'>รวมวัตถุดิบเสริม</div><div className='val'>{num(sum.totalSupplementaryIn)} กก.</div></div>
-                <div className='kpi'><div className='name'>รวมสารปรับปรุงดินออก</div><div className='val'>{num(sum.totalSoilOut)} กก.</div></div>
-                <div className='kpi'><div className='name'>ขยะที่ใช้คำนวณ</div><div className='val'>{num(sum.wasteToCalculate)} กก.</div></div>
-                <div className='kpi'><div className='name'>รวมไฟฟ้า</div><div className='val'>{num(sum.totalKwh)} kWh</div></div>
-                <div className='kpi' style={{background:'#f3f4f6'}}>
-                    <div className='name'>% สารปรับปรุงดินออก</div>
-                    <div className='val'>{num(sum.soilOutPercent)}%</div>
-                </div>
-                <div className='kpi' style={{background:'#f3f4f6'}}>
-                    <div className='name'>พลังงานเฉลี่ย</div>
-                    <div className='val'>{num(sum.avgKwh)} kWh/วัน</div>
-                </div>
-              </div>
-            </div>
-
-            {rows.length>0 && (
-              <div className='result-grid' style={{marginTop:14}}>
-                <div className='card'>
-                  <h3>ผลลัพธ์หลัก</h3>
-                  <div className='kpis' style={{gridTemplateColumns:'1fr'}}>
-                    <div className='kpi'>
-                      <div className='name'>การหลีกเลี่ยงการปล่อยสุทธิ (Net Avoidance)</div>
-                      <div className='big'>{num(sum.gross_t)} <span style={{fontSize:'14px',fontWeight:500}}>ตันCO2e/งวด</span></div>
-                    </div>
-                    <div className='kpi'>
-                      <div className='name'>การปล่อยจากไฟฟ้า (Emission)</div>
-                      <div className='big'>{num(sum.elec_t)} <span style={{fontSize:'14px',fontWeight:500}}>ตันCO2e/งวด</span></div>
-                    </div>
-                    <div className='kpi'>
-                      <div className='name'>คาร์บอนเครดิตสุทธิ (Net)</div>
-                      <div className='big green'>{num(sum.net_t)} <span style={{fontSize:'14px',fontWeight:500}}>ตันCO2e/งวด</span></div>
-                    </div>
-                    <div className='kpi' style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      <div>
-                        <div className='name'>เทียบเท่าต้นไม้</div>
-                        <div className='big'>{num(sum.trees,0)} <span style={{fontSize:'14px',fontWeight:500}}>ต้น/งวด</span></div>
-                      </div>
-                      <Leaf/>
-                    </div>
-                  </div>
-                </div>
-
-                {/* --- UPDATED FORMULA DISPLAY --- */}
-                <div className='card'>
-                  <h3>สูตรที่ใช้</h3>
-                  <ul style={{marginTop:6,lineHeight:1.6}}>
-                    <li>ขยะที่ใช้คำนวณ (กก.) = Σ(ขยะเข้า) × สัดส่วนขยะเข้าสู่กระบวนการ</li>
-                    <li>Gross (kgCO2e) = ขยะที่ใช้คำนวณ (กก.) × [EF ฝังกลบ – EF หมัก]</li>
-                    <li>ไฟฟ้า (kgCO2e) = Σ(kWh) × EF ไฟฟ้า</li>
-                    <li>Net (kgCO2e) = max(Gross – ไฟฟ้า, 0)</li>
-                    <li style={{marginTop:8, color:'var(--muted)', fontSize: 12}}>% สารปรับปรุงดินออก = Σ(สารปรับปรุงดินออก) / (Σ(ขยะเข้า) + Σ(วัตถุดิบเสริม))</li>
-                  </ul>
-                  <div className='sub'>*EFs ทั้งหมดสามารถปรับเปลี่ยนได้ตามข้อมูลอ้างอิงล่าสุด</div>
-                </div>
-              </div>
-            )}
-
-            <footer>© 2025 2GO TH • TOGO Carbon Calculator (Daily Log Edition). เครื่องมือนี้ช่วยประเมินศักยภาพเครดิตจากข้อมูลจริงรายวัน</footer>
           </div>
-        );
-      }
+        )}
 
-      ReactDOM.createRoot(document.getElementById('root')).render(<App/>)
-    </script>
-  </body>
+        <div className="card">
+          <div className="head">
+            <div onClick={handleTitleClick} style={{cursor:'pointer', userSelect:'none'}}>
+              <h1 style={{margin:0}}>♻️ TOGO Daily Log</h1>
+              <small>ID: {machineId} (แตะ 3 ครั้งเพื่อตั้งค่า)</small>
+            </div>
+            <div className="toolbar">
+              <button className="btn sec" onClick={handleExportExcel}>📥 Export Excel</button>
+              <button className="btn blue" onClick={() => syncNow()} disabled={syncing}>
+                {syncing ? "⌛ กำลังส่ง..." : "☁️ Sync Cloud"}
+              </button>
+            </div>
+          </div>
+
+          <div className="kpis">
+            <div className="kpi" data-icon="🍌"><small>🍌 ขยะอินทรีย์สะสม (kg)</small><div className="val">{num(summary.w)}</div></div>
+            <div className="kpi" data-icon="⚡"><small>⚡ หน่วยไฟ (kWh)</small><div className="val">{num(summary.k)}</div></div>
+            <div className="kpi" data-icon="🌱"><small>🌱 สารปรับปรุงดินที่ได้ (kg)</small><div className="val">{num(summary.s)}</div></div>
+            <div className="kpi" data-icon="🌍"><small>🌍 ลดคาร์บอน (tCO2e)</small><div className="val" style={{color:'var(--good)'}}>{num(summary.net,3)}</div></div>
+            <div className="kpi" data-icon="🌳"><small>🌳 เทียบเท่าต้นไม้ (ต้น)</small><div className="val" style={{color:'var(--blue)'}}>{num(summary.trees,0)}</div></div>
+          </div>
+        </div>
+
+        <div className="card" style={{overflowX:'auto'}}>
+          <div className="head">
+            <h3 style={{margin:0}}>📋 รายการบันทึก</h3>
+            <div className="toolbar">
+              <button className={`btn ${selRow?.dailyComplete ? 'good' : 'bad'}`} onClick={()=>setShowDaily(true)} disabled={!selId}>
+                {selRow?.dailyComplete ? '✅ เช็คลิสต์รายวันแล้ว' : '⚠ เช็คลิสต์รายวัน'}
+              </button>
+
+              <button className={mBtnClass} onClick={()=>setShowM(true)}>
+                {mBtnText}
+              </button>
+
+              <button className="btn blue" onClick={handleSaveDaily} disabled={!selId}>
+                💾 บันทึก
+              </button>
+
+              <button className="btn" onClick={addRow}>+ เพิ่มแถว</button>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>📅 วันที่</th>
+                <th>⚡ หน่วยไฟ(kWh)</th>
+                <th>💧 ความชื้น(%)</th>
+                <th>🌱 สารปรับปรุงดินออก(kg)</th>
+                <th>🍌 ขยะอินทรีย์เข้า(kg)</th>
+                <th>🌿 วัสดุปรับสภาพ(kg)</th>
+                <th>สรุป</th>
+                <th>สถานะ</th>
+                <th>ลบ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => {
+                const s = computeSummary(r);
+                const sClass = s.includes("⚠") ? "bg-bad" : (s.includes("✅") ? "bg-good" : "bg-warn");
+                return (
+                  <tr key={r.id} onClick={()=>setSelId(r.id)} style={{background: selId===r.id ? '#eff6ff' : 'transparent', cursor:'pointer'}}>
+                    <td><input type="date" value={r.date} onChange={e=>handleDateChange(r.id, e.target.value)} /></td>
+                    <td><input type="number" value={r.kwh} onChange={e=>patchRow(r.id, {kwh:e.target.value})} /></td>
+                    <td><input type="number" value={r.humidityPct} onChange={e=>patchRow(r.id, {humidityPct:e.target.value})} /></td>
+                    <td><input type="number" value={r.soilOutKg} onChange={e=>patchRow(r.id, {soilOutKg:e.target.value})} /></td>
+                    <td><input type="number" value={r.wasteInKg} onChange={e=>patchRow(r.id, {wasteInKg:e.target.value})} /></td>
+                    <td><input type="number" value={r.supplementaryKg} onChange={e=>patchRow(r.id, {supplementaryKg:e.target.value})} /></td>
+                    <td><span className={`badge ${sClass}`}>{s}</span></td>
+                    <td>{statusBadge(r)}</td>
+                    <td>
+                      <button className="btn sec" onClick={(e)=>{e.stopPropagation(); deleteRow(r.id);}}>🗑️</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          <div className="rowhint" style={{marginTop:10}}>
+            * กันวันที่ซ้ำแล้ว: ถ้าเลือกวันซ้ำ จะเด้งไปแถวเดิม / บันทึกได้เมื่อ d1–d6 ครบ
+          </div>
+        </div>
+
+        {/* Modal: Daily Checklist */}
+        {showDaily && selRow && (
+          <div className="modalBack" onClick={()=>setShowDaily(false)}>
+            <div className="modal" onClick={e=>e.stopPropagation()}>
+              <div className="head">
+                <h2 style={{margin:0}}>📝 Checklist รายวัน: {selRow.date}</h2>
+                <button className="btn sec" onClick={()=>setShowDaily(false)}>X</button>
+              </div>
+
+              <div className="rowhint" style={{marginBottom:10}}>
+                * กรอกให้ครบทุกข้อ แล้วค่อยกด “💾 บันทึก” ข้างนอก
+              </div>
+
+              {ITEMS_DAILY.map(it => (
+                <div key={it.k} style={{marginBottom:15}}>
+                  <b>{it.t}</b>
+                  <div className="radioRow">
+                    {STATUS_STD.map(s => (
+                      <label key={s.v} className="radioBtn"
+                        style={{
+                          background: selRow.dailyCk?.[it.k]===s.v ? '#dbeafe' : '',
+                          borderColor: selRow.dailyCk?.[it.k]===s.v ? 'var(--blue)' : ''
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          checked={selRow.dailyCk?.[it.k]===s.v}
+                          onChange={()=>patchRow(selId, { dailyCk: { ...(selRow.dailyCk||{}), [it.k]: s.v } })}
+                        />
+                        {s.l}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              <div style={{marginTop:10}}>
+                <label>หมายเหตุเพิ่มเติม:</label>
+                <textarea rows="3" value={selRow.note} onChange={e=>patchRow(selId, {note: e.target.value})}></textarea>
+              </div>
+
+              <button className="btn sec" style={{width:'100%', marginTop:15, padding:15}} onClick={()=>setShowDaily(false)}>
+                ปิด
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: 15–30 day Checklist */}
+        {showM && (
+          <div className="modalBack" onClick={()=>setShowM(false)}>
+            <div className="modal" onClick={e=>e.stopPropagation()}>
+              <div className="head">
+                <h2 style={{margin:0}}>🧰 เช็คลิส ทุก 15–30 วัน</h2>
+                <button className="btn sec" onClick={()=>setShowM(false)}>X</button>
+              </div>
+
+              <div className="rowhint" style={{marginBottom:10}}>
+                ต้องกรอกครบทุกข้อเพื่อบันทึก (m1–m9) / ล่าสุด: {mSavedAtISO ? new Date(mSavedAtISO).toLocaleString("th-TH") : "-"}
+              </div>
+
+              {ITEMS_M.map(it => {
+                const opts = it.opts || STATUS_STD;
+                return (
+                  <div key={it.k} style={{marginBottom:15}}>
+                    <b>{it.t}</b>
+                    <div className="radioRow">
+                      {opts.map(s => (
+                        <label key={s.v} className="radioBtn"
+                          style={{
+                            background: mCk?.[it.k]===s.v ? '#dbeafe' : '',
+                            borderColor: mCk?.[it.k]===s.v ? 'var(--blue)' : ''
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            checked={mCk?.[it.k]===s.v}
+                            onChange={()=>setMCk(prev => ({ ...(prev||{}), [it.k]: s.v }))}
+                          />
+                          {s.l}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+
+              <button className="btn blue" style={{width:'100%', marginTop:10, padding:15}} onClick={handleSaveM}>
+                บันทึกเช็คลิสต์ 15–30 วัน
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
 </html>
